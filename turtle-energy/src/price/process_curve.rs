@@ -38,7 +38,6 @@ pub fn preprocess_curve(prices: &Vec<CurvePoint>) -> Vec<Price> {
         error_code: CURVE_SHORT_ERR,
     });
 
-
     return out;
 }
 

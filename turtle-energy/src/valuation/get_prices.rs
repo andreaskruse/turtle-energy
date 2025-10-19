@@ -1,5 +1,5 @@
+use crate::price::process_curve;
 use crate::structs::{CurvePoint, Delivery, Price, Result};
-use crate::utils::preprocess;
 use std::sync::mpsc;
 use std::{mem, sync::Arc, thread};
 
@@ -67,7 +67,7 @@ pub fn get_prices_rs_mpsc(deliveries: Vec<Delivery>, prices: Vec<CurvePoint>) ->
         panic!("deliveries is empty")
     }
 
-    let curve = preprocess::preprocess_curve(&prices);
+    let curve = process_curve::preprocess_curve(&prices);
 
     let threads = thread::available_parallelism().unwrap().get();
     let size: usize = deliveries.len();
@@ -105,7 +105,7 @@ pub fn get_prices_rs_mt(deliveries: Vec<Delivery>, prices: Vec<CurvePoint>) -> V
         panic!("deliveries is empty")
     }
 
-    let curve = preprocess::preprocess_curve(&prices);
+    let curve = process_curve::preprocess_curve(&prices);
 
     // let threads = thread::available_parallelism().unwrap().get();
     let size: usize = deliveries.len();
