@@ -1,4 +1,4 @@
-use crate::price::process_curve;
+use crate::valuation::process_curve;
 use crate::structs::{CurvePoint, Delivery, Price, Result};
 use std::sync::mpsc;
 use std::{mem, sync::Arc, thread};
@@ -6,7 +6,7 @@ use std::{mem, sync::Arc, thread};
 /// Compute the average price for each delivery in the deliveries.
 /// Deliveries and the curve are assumed to be sorted, and the curve is
 /// assumed continuous.
-pub fn get_prices(deliveries: &[Delivery], curve: &[Price]) -> Vec<Result> {
+pub fn get_price_avg(deliveries: &[Delivery], curve: &[Price]) -> Vec<Result> {
     let prices_len = curve.len();
     let mut out: Vec<Result> = Vec::with_capacity(deliveries.len());
     let mut idx_price = 0;
@@ -86,7 +86,7 @@ pub fn get_prices_rs_mpsc(deliveries: Vec<Delivery>, prices: Vec<CurvePoint>) ->
         let sender = sender.clone();
 
         thread::spawn(move || {
-            let res = get_prices(&shared_deliveries[s..e], &shared_curve);
+            let res = get_price_avg(&shared_deliveries[s..e], &shared_curve);
             sender.send(res).unwrap();
         });
     }
@@ -127,7 +127,7 @@ pub fn get_prices_rs_mt(deliveries: Vec<Delivery>, prices: Vec<CurvePoint>) -> V
         let shared_curve = Arc::clone(&shared_curve);
 
         let handle = thread::spawn(move || {
-            let res = get_prices(&shared_deliveries[s..e], &shared_curve);
+            let res = get_price_avg(&shared_deliveries[s..e], &shared_curve);
             res
         });
         handles.push(handle);

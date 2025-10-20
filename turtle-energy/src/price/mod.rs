@@ -1,1 +1,1 @@
-pub mod process_curve;
+pub mod curve;

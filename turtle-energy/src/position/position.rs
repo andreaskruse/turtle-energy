@@ -1,11 +1,105 @@
-use std::str::FromStr;
-
 use chrono::DateTime;
 use chrono_tz::Tz;
+use csv;
+use std::fs;
+use std::str::FromStr;
 
-use crate::Result;
 use crate::position::enums::{CalculationModel, CalculationType, PriceUnit, QuantityUnit};
 use crate::utils::point::Point;
+use crate::{Error, Result};
+
+pub struct PositionModel {
+    pub positions: Vec<Position>,
+    pub errors: Vec<PositionError>,
+}
+
+impl PositionModel {
+    fn _from_sql() {}
+
+    pub fn from_csv(filename: &str) -> Result<Self> {
+        let file = fs::File::open(filename).expect("Could not read .csv file");
+        let mut reader = csv::Reader::from_reader(file);
+
+        let expected_headers: [&'static str; 13] = [
+            "position_id",
+            "position_leg",
+            "delivery_start",
+            "delivery_end",
+            "quantity",
+            "quanity_unit",
+            "fixed_price_p0",
+            "price_unit",
+            "variable_price_flag",
+            "cvp",
+            "mvp",
+            "calculation_type",
+            "calculation_model",
+        ];
+        let csv_headers = reader.headers()?;
+        for i in 0..expected_headers.len() {
+            if expected_headers[i] != &csv_headers[i] {
+                return Err(Error::ParseInput(format!(
+                    "Wrong CSV file format, expected {:?}",
+                    expected_headers
+                )));
+            }
+        }
+
+        let mut out: Vec<Position> = Vec::new();
+        let mut errors: Vec<PositionError> = Vec::new();
+        for row in reader.records() {
+            let record = row?;
+            match Position::from_csv(
+                &record[0],
+                &record[1],
+                &record[2],
+                &record[3],
+                &record[4],
+                &record[5],
+                &record[6],
+                &record[7],
+                &record[8],
+                &record[9],
+                &record[10],
+                &record[11],
+                &record[12],
+                &record[13],
+            ) {
+                Ok(val) => out.push(val),
+                Err(err) => errors.push(PositionError::from_csv(
+                    &record[0],
+                    &record[1],
+                    err.to_string(),
+                )?),
+            };
+        }
+
+        Ok(PositionModel {
+            positions: out,
+            errors: errors,
+        })
+    }
+}
+
+pub struct PositionError {
+    pub position_id: u64,
+    pub position_leg: u8,
+    pub error: String,
+}
+
+impl PositionError {
+    pub fn from_csv(position_id: &str, position_leg: &str, error: String) -> Result<Self> {
+        Ok(PositionError {
+            position_id: position_id
+                .parse()
+                .expect("position_id must be an integer (u64)"),
+            position_leg: position_leg
+                .parse()
+                .expect("position_leg must be an integer (u8)"),
+            error: error,
+        })
+    }
+}
 
 pub struct Position {
     pub position_id: u64,
@@ -23,14 +117,13 @@ pub struct Position {
     pub calculation_model: CalculationModel,
 }
 
-pub struct PositionError {
-    pub position_id: u64,
-    pub position_leg: u8,
-    pub error: String,
-}
-
 impl Position {
-    pub fn new(
+    pub fn split_to_months(&self, _split_dt: DateTime<Tz>) {
+        
+    }
+
+
+    pub fn from(
         position_id: u64,
         position_leg: u8,
         delivery_start: String,
@@ -46,73 +139,58 @@ impl Position {
         calculation_model: String,
         time_zone: String,
     ) -> Result<Self> {
-        let delivery_start_p = Point::new(&delivery_start, &time_zone)?;
-        let delivery_end_p = Point::new(&delivery_end, &time_zone)?;
-        let quantity_unit_e = QuantityUnit::from_str(&quanity_unit)?;
-        let price_unit_e = PriceUnit::from_str(&price_unit)?;
-        let calculation_type = CalculationType::from_str(&calculation_type)?;
-        let calculation_model = CalculationModel::from_str(&calculation_model)?;
-
         return Ok(Position {
             position_id: position_id,
             position_leg: position_leg,
-            delivery_start: delivery_start_p,
-            delivery_end: delivery_end_p,
+            delivery_start: Point::new(&delivery_start, &time_zone)?,
+            delivery_end: Point::new(&delivery_end, &time_zone)?,
             quantity: quantity,
-            quanity_unit: quantity_unit_e,
+            quanity_unit: QuantityUnit::from_str(&quanity_unit)?,
             fixed_price_p0: fixed_price_p0,
-            price_unit: price_unit_e,
+            price_unit: PriceUnit::from_str(&price_unit)?,
             variable_price_flag: variable_price_flag,
             cvp: cvp,
             mvp: mvp,
-            calculation_type: calculation_type,
-            calculation_model: calculation_model,
+            calculation_type: CalculationType::from_str(&calculation_type)?,
+            calculation_model: CalculationModel::from_str(&calculation_model)?,
         });
     }
 
-    pub fn split_to_months(&self, _split_dt: DateTime<Tz>) {
-        todo!();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn split_to_months() {
-        let raw_data = (
-            1,
-            1,
-            String::from("2025-01-02 00:00:00Z"),
-            String::from("2026-01-12 00:00:00Z"),
-            100.0,
-            String::from("MWH"),
-            10.0,
-            String::from("EUR"),
-            true,
-            String::from("DK1"),
-            String::from("DK1"),
-            String::from("FORWARD"),
-            String::from("STANDARD"),
-            String::from("Europe/Copenhagen"),
-        );
-
-        let _position = Position::new(
-            raw_data.0,
-            raw_data.1,
-            raw_data.2,
-            raw_data.3,
-            raw_data.4,
-            raw_data.5,
-            raw_data.6,
-            raw_data.7,
-            raw_data.8,
-            raw_data.9,
-            raw_data.10,
-            raw_data.11,
-            raw_data.12,
-            raw_data.13,
-        );
+    pub fn from_csv(
+        position_id: &str,
+        position_leg: &str,
+        delivery_start: &str,
+        delivery_end: &str,
+        quantity: &str,
+        quanity_unit: &str,
+        fixed_price_p0: &str,
+        price_unit: &str,
+        variable_price_flag: &str,
+        cvp: &str,
+        mvp: &str,
+        calculation_type: &str,
+        calculation_model: &str,
+        time_zone: &str,
+    ) -> Result<Self> {
+        return Ok(Position {
+            // position_id and position_leg are required to be correct.
+            position_id: position_id
+                .parse()
+                .expect("position_id must be an integer (u64)"),
+            position_leg: position_leg
+                .parse()
+                .expect("position_leg must be an integer (u8)"),
+            delivery_start: Point::new(&delivery_start, &time_zone)?,
+            delivery_end: Point::new(&delivery_end, &time_zone)?,
+            quantity: quantity.parse()?,
+            quanity_unit: QuantityUnit::from_str(&quanity_unit)?,
+            fixed_price_p0: fixed_price_p0.parse()?,
+            price_unit: PriceUnit::from_str(&price_unit)?,
+            variable_price_flag: variable_price_flag.parse()?,
+            cvp: cvp.to_string(),
+            mvp: mvp.to_string(),
+            calculation_type: CalculationType::from_str(&calculation_type)?,
+            calculation_model: CalculationModel::from_str(&calculation_model)?,
+        });
     }
 }
