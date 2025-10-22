@@ -17,7 +17,7 @@ impl PositionModel {
     fn _from_sql() {}
 
     pub fn from_csv(filename: &str) -> Result<Self> {
-        let file = fs::File::open(filename).expect("Could not read .csv file");
+        let file = fs::File::open(filename).expect("Could not read .csv file with positions");
         let mut reader = csv::Reader::from_reader(file);
 
         let expected_headers: [&'static str; 13] = [

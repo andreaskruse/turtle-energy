@@ -1,3 +1,3 @@
 pub mod enums;
 pub mod position;
-pub mod simple_position;
+pub mod naive_position;

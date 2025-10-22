@@ -130,19 +130,22 @@ export_tuple_to_csv(
 
 
 delivs = []
+position_id = 1
 for i in range(400_000):
     new_day = random.randint(0, 200)
     start = datetime(2025, 1, 1, 0, 0) + timedelta(days=new_day)
     end = start + timedelta(days=1)
     value = max(new_day, 100)
 
-    delivs.append((start.timestamp(), end.timestamp(), value))
+    delivs.append((position_id, start.isoformat(), end.isoformat(), value))
+    position_id += 1
 
     start += timedelta(minutes=15 * new_day)
     end = start + timedelta(minutes=15)
     value = max(new_day * 7, 7)
 
-    delivs.append((start.timestamp(), end.timestamp(), value))
+    delivs.append((position_id, start.isoformat(), end.isoformat(), value))
+    position_id += 1
 
 
 for i in range(200_000):
@@ -151,9 +154,13 @@ for i in range(200_000):
     end = start + timedelta(days=new_day)
     value = max(new_day, 100)
 
-    delivs.append((start.timestamp(), end.timestamp(), value))
+    delivs.append((position_id, start.isoformat(), end.isoformat(), value))
+    position_id += 1
 
 
 export_tuple_to_csv(
-    delivs, "positions.csv", ",", ["delivery_start", "delivery_end", "value"]
+    data=delivs, 
+    filepath="positions.csv",
+    delimiter=",",
+    fieldnames=["position_id", "delivery_start", "delivery_end", "quantity"]
 )
