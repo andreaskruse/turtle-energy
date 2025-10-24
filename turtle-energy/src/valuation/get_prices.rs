@@ -50,11 +50,11 @@ pub fn get_price(deliveries: &[NaivePosition], curve: &[Price]) -> Vec<Result> {
 
         // Check for coding mistakes. Can be removed once we are
         // absolutely sure it works in all cases.
-        // assert_eq!(
-        //     total_overlap, deliv_len,
-        //     "Is data sorted? Overlap does not match delivery length: {} != {}",
-        //     total_overlap, deliv_len
-        // );
+        assert_eq!(
+            total_overlap, deliv_len,
+            "Is data sorted? Overlap does not match delivery length: {} != {}",
+            total_overlap, deliv_len
+        );
 
         out.push((price, value, error_code));
     }
