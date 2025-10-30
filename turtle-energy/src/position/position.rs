@@ -30,8 +30,8 @@ impl PositionModel {
             "fixed_price_p0",
             "price_unit",
             "variable_price_flag",
-            "cvp",
-            "mvp",
+            "contract_valuation_product",
+            "market_valuation_product",
             "calculation_type",
             "calculation_model",
         ];
@@ -111,17 +111,14 @@ pub struct Position {
     pub fixed_price_p0: f32,
     pub price_unit: PriceUnit,
     pub variable_price_flag: bool,
-    pub cvp: String,
-    pub mvp: String,
+    pub contract_valuation_product: String,
+    pub market_valation_product: String,
     pub calculation_type: CalculationType,
     pub calculation_model: CalculationModel,
 }
 
 impl Position {
-    pub fn split_to_months(&self, _split_dt: DateTime<Tz>) {
-        
-    }
-
+    pub fn split_to_months(&self, _split_dt: DateTime<Tz>) {}
 
     pub fn from(
         position_id: u64,
@@ -133,8 +130,8 @@ impl Position {
         fixed_price_p0: f32,
         price_unit: String,
         variable_price_flag: bool,
-        cvp: String,
-        mvp: String,
+        contract_valuation_product: String,
+        market_valation_product: String,
         calculation_type: String,
         calculation_model: String,
         time_zone: String,
@@ -149,8 +146,8 @@ impl Position {
             fixed_price_p0: fixed_price_p0,
             price_unit: PriceUnit::from_str(&price_unit)?,
             variable_price_flag: variable_price_flag,
-            cvp: cvp,
-            mvp: mvp,
+            contract_valuation_product,
+            market_valation_product,
             calculation_type: CalculationType::from_str(&calculation_type)?,
             calculation_model: CalculationModel::from_str(&calculation_model)?,
         });
@@ -166,8 +163,8 @@ impl Position {
         fixed_price_p0: &str,
         price_unit: &str,
         variable_price_flag: &str,
-        cvp: &str,
-        mvp: &str,
+        contract_valuation_product: &str,
+        market_valation_product: &str,
         calculation_type: &str,
         calculation_model: &str,
         time_zone: &str,
@@ -187,8 +184,8 @@ impl Position {
             fixed_price_p0: fixed_price_p0.parse()?,
             price_unit: PriceUnit::from_str(&price_unit)?,
             variable_price_flag: variable_price_flag.parse()?,
-            cvp: cvp.to_string(),
-            mvp: mvp.to_string(),
+            contract_valuation_product: contract_valuation_product.to_string(),
+            market_valation_product: market_valation_product.to_string(),
             calculation_type: CalculationType::from_str(&calculation_type)?,
             calculation_model: CalculationModel::from_str(&calculation_model)?,
         });
