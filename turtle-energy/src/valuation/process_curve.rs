@@ -1,4 +1,4 @@
-use crate::structs::{CurvePoint, Price};
+use crate::types::{CurvePoint, Price};
 use std::cmp;
 
 pub fn preprocess_curve(prices: &Vec<CurvePoint>) -> Vec<Price> {

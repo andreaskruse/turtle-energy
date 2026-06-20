@@ -1,100 +1,76 @@
-use std::sync::mpsc;
-use std::{mem, sync::Arc, thread};
+use pyo3::prelude::*;
 
-use crate::position::naive_position::NaivePosition;
-use crate::price::curve::Price;
-use crate::structs::Result;
+type DeliveryTuple = (f64, f64);
+type PriceTuple = (f64, f64, f64, u32);
+type ResultTuple = (f64, u32);
 
-pub fn get_price(deliveries: &[NaivePosition], curve: &[Price]) -> Vec<Result> {
-    let prices_len = curve.len();
-    let mut out: Vec<Result> = Vec::with_capacity(deliveries.len());
-    let mut idx_price = 0;
-    let mut deliv_len: i64;
-    let mut total_overlap: i64;
-    let mut price: f64;
-    let mut value: f64;
-    let mut error_code: u32;
+#[pyfunction]
+pub fn get_prices(deliveries: Vec<DeliveryTuple>, prices: Vec<PriceTuple>) -> Vec<ResultTuple> {
+    let mut deliv_len: f64;
+    let mut total_overlap: f64;
+
+    let mut error_code: u32 = 0;
+    let mut price: f64 = 0.0;
+
+    let mut last_p_idx: usize = 0;
+    let mut p_idx: usize = 0;
+    let mut last_d_s: f64 = 0.0;
+    let mut last_d_e: f64 = 0.0;
+
+    let curve_l: usize = prices.len();
+    let mut out: Vec<ResultTuple> = Vec::with_capacity(deliveries.len());
     for d in deliveries {
-        deliv_len = d.delivery_end.ts - d.delivery_start.ts;
-        total_overlap = 0;
-        price = 0.0;
-        value = 0.0;
-        error_code = 0;
-
-        // Could make a check for d==d_lag and reuse price, update value. Maybe faster?
-        // Jump back to immediately before delivery start.
-        while &curve[idx_price].delivery_start > &d.delivery_start.ts {
-            idx_price -= 1;
+        if last_d_s == d.0 && last_d_e == d.1 {
+            out.push((price, error_code));
+            continue;
         }
 
-        for p in &curve[idx_price..prices_len] {
-            // If the price ends before delivery start, move to next:
-            if p.delivery_end <= d.delivery_start.ts {
-                continue;
-            }
+        deliv_len = d.1 - d.0;
+        total_overlap = 0.0;
+        price = 0.0;
+        error_code = 0;
 
+        // Jump back to the starting point of the last delivery.
+        if prices[p_idx].0 > d.0 {
+            p_idx = last_p_idx;
+        }
+
+        // Jump to the next price. Can we make the code prettier?
+        for p in &prices[p_idx..curve_l] {
+            if p.1 <= d.0 {
+                p_idx += 1;
+            } else {
+                break;
+            }
+        }
+        last_p_idx = p_idx;
+
+        for p in &prices[p_idx..curve_l] {
             // Compute the overlap
-            let overlap =
-                p.delivery_end.min(d.delivery_end.ts) - d.delivery_start.ts.max(p.delivery_start);
+            let overlap = p.1.min(d.1) - d.0.max(p.0);
             total_overlap += overlap;
 
-            price += p.value * (overlap / deliv_len) as f64;
-            value += price * d.quantity;
-            error_code |= p.error_code;
+            price += p.2 * (overlap / deliv_len);
+            error_code |= p.3;
 
             // Done with this delivery.
-            if p.delivery_end >= d.delivery_end.ts {
+            if p.1 >= d.1 {
                 break;
             }
         }
 
-        // Check for coding mistakes. Can be removed once we are
-        // absolutely sure it works in all cases.
+        // Check for coding mistakes.
         assert_eq!(
             total_overlap, deliv_len,
             "Is data sorted? Overlap does not match delivery length: {} != {}",
             total_overlap, deliv_len
         );
 
-        out.push((price, value, error_code));
+        last_d_s = d.0;
+        last_d_e = d.1;
+
+        out.push((price, error_code));
     }
 
     return out;
-}
-
-pub fn get_prices_rs_mpsc(deliveries: Vec<NaivePosition>, prices: Vec<Price>) -> Vec<Result> {
-    if deliveries.len() == 0 {
-        panic!("deliveries is empty")
-    }
-
-    let threads = thread::available_parallelism().unwrap().get();
-    let size: usize = deliveries.len();
-    let chunk_size = size / threads;
-    let loop_size: Vec<(usize, usize)> = (1..=threads)
-        .map(|x| ((x - 1) * chunk_size, x * chunk_size))
-        .collect();
-
-    let shared_deliveries = Arc::new(deliveries);
-    let shared_curve = Arc::new(prices);
-    let (sender, receiver) = mpsc::channel();
-    for (s, e) in loop_size {
-        let shared_deliveries = Arc::clone(&shared_deliveries);
-        let shared_curve = Arc::clone(&shared_curve);
-
-        let sender = sender.clone();
-
-        thread::spawn(move || {
-            let res = get_price(&shared_deliveries[s..e], &shared_curve);
-            sender.send(res).unwrap();
-        });
-    }
-
-    mem::drop(sender);
-
-    let mut out = Vec::with_capacity(size);
-    for received in receiver {
-        out.extend(received);
-    }
-
-    out
 }

@@ -4,8 +4,8 @@ use csv;
 use std::fs;
 use std::str::FromStr;
 
-use crate::position::enums::{CalculationModel, CalculationType, PriceUnit, QuantityUnit};
-use crate::utils::point::Point;
+use crate::enums::{CalculationModel, CalculationType, PriceUnit, QuantityUnit};
+use crate::point::Point;
 use crate::{Error, Result};
 
 pub struct PositionModel {

@@ -1,9 +1,8 @@
 mod error;
-pub mod flow;
+pub mod enums;
 pub mod position;
 pub mod price;
-pub mod structs;
-pub mod utils;
-pub mod valuation;
+pub mod types;
+pub mod point;
 
 pub use self::error::{Error, Result};
